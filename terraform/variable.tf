@@ -34,6 +34,7 @@ variable "bucket_names" {
     "raw-zone",
     "trusted-zone",
     "refined-zone",
+    "aws-glue-scripts",
     "scripts"
   ]
 }
