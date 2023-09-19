@@ -3,10 +3,6 @@ variable "region" {
   default     = "us-east-1"
 }
 
-variable "account_id" {
-  default = 801772755864
-}
-
 variable "environment" {
   default = "dev"
 }
@@ -18,7 +14,7 @@ variable "prefix" {
 
 # Prefix configuration and project common tags
 locals {
-  glue_bucket = "${var.prefix}-scripts-${var.environment}-${var.account_id}"
+  glue_bucket = "${var.prefix}-scripts-${var.environment}"
   prefix      = var.prefix
   common_tags = {
     Environment = "dev"
@@ -33,9 +29,7 @@ variable "bucket_names" {
     "landing-zone",
     "raw-zone",
     "trusted-zone",
-    "refined-zone",
-    "aws-glue-scripts",
-    "scripts"
+    "refined-zone"
   ]
 }
 

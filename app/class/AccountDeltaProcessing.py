@@ -2,7 +2,7 @@ from pyspark.sql import SparkSession
 from delta.tables import *
 
 
-class RedemptionDeltaProcessing:
+class AccountDeltaProcessing:
     def __init__(
         self,
         landing_zone_bucket: str = None,
@@ -33,7 +33,7 @@ class RedemptionDeltaProcessing:
             self.spark, f"s3a://{self.raw_bucket}/{prefix}")
         deltaTable.generate("symlink_format_manifest")
 
-    def write_to_silver(
+    def write_to_raw(
         self,
         prefix: str,
         sql: str,
@@ -82,9 +82,3 @@ class RedemptionDeltaProcessing:
             deltaTable = DeltaTable.forPath(
                 self.spark, f"s3a://{self.trusted_bucket}/{prefix}")
             deltaTable.generate("symlink_format_manifest")
-
-
-
-
-
-
