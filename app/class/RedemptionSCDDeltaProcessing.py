@@ -4,7 +4,7 @@ from pyspark.sql.functions import lit, input_file_name
 import datetime as dt
 
 
-class DeltaProcessing:
+class RedemptionDeltaProcessing:
     def __init__(
         self,
         landing_zone_bucket: str = None,
