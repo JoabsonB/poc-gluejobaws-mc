@@ -1,10 +1,11 @@
 from pyspark.sql import SparkSession
 from delta.tables import *
-from pyspark.sql.functions import lit, input_file_name
+from pyspark.sql import types as T
+from pyspark.sql import functions as F
 import datetime as dt
 
 
-class DeltaProcessing:
+class RedemptionDeltaProcessing:
     def __init__(
         self,
         landing_zone_bucket: str = None,
@@ -25,78 +26,143 @@ class DeltaProcessing:
         df = self.spark.read.format(format).option('header', 'true').option('sep', '|').load(
             f"s3a://{self.landing_zone_bucket}/{prefix}")
 
-        df = df.toDF('customerid', 'redemptionid', 'referencenumber', 'rewardmatrixitemid', 'rewardcategoryid', 'categoryhierarchyid', 'redemptiondescription', 'creditcode', 'creditredemptionid', 'quantity', 'totalpointsredeemed', 'redeemeddate', 'postingdate', 'pointspurchased', 'fulfillmentvendorid', 'groupid', 'personalization', 'programid', 'householdid', 'emailaddress', 'redemptionsourcecode', 'travelcomponentquantity',
-                     'cashbackamount', 'cashbacksentdate', 'redemptionitemdescription', 'externalitemskucode', 'externalitemdescription', 'redemptionquantity', 'externalitemid', 'categoryname', 'externalemailaddress', 'redeemedhouseholdid1', 'pointsredeemedhh1', 'redeemedhouseholdid2', 'pointsredeemedhh2', 'redeemedhouseholdid3', 'pointsredeemedhh3', 'bankcustomernumber')
+        df = df.toDF('customerid',
+                     'redemptionid',
+                     'referencenumber',
+                     'rewardmatrixitemid',
+                     'rewardcategoryid',
+                     'categoryhierarchyid',
+                     'redemptiondescription',
+                     'creditcode',
+                     'creditredemptionid',
+                     'quantity',
+                     'totalpointsredeemed',
+                     'redeemeddate',
+                     'postingdate',
+                     'pointspurchased',
+                     'fulfillmentvendorid',
+                     'groupid',
+                     'personalization',
+                     'programid',
+                     'householdid',
+                     'emailaddress',
+                     'redemptionsourcecode',
+                     'travelcomponentquantity',
+                     'cashbackamount',
+                     'cashbacksentdate',
+                     'redemptionitemdescription',
+                     'externalitemskucode',
+                     'externalitemdescription',
+                     'redemptionquantity',
+                     'externalitemid',
+                     'categoryname',
+                     'externalemailaddress',
+                     'redeemedhouseholdid1',
+                     'pointsredeemedhh1',
+                     'redeemedhouseholdid2',
+                     'pointsredeemedhh2',
+                     'redeemedhouseholdid3',
+                     'pointsredeemedhh3',
+                     'bankcustomernumber')
         
         df = (
-            df.select("*",)
-            .withColumn('created_at', lit(dt.datetime.now()))
-            .withColumn('valid_from', lit(df.redeemeddate))
-            .withColumn('redeemed_year_month', df.redeemeddate[1:6])
-            .withColumn('filename', input_file_name())
-        )
+            df.select("*",
+                      F.lit(dt.datetime.now()).alias("created_at"),
+                      F.lit(dt.datetime.now()).alias("valid_to"),
+                      F.lit(df.redeemeddate[1:6]).alias("redeemed_year_month"),
+                      F.lit(F.split(F.input_file_name(), '/').getItem(5)).alias("filename")
+                      ))
         
         df.coalesce(1).write.format('delta').mode('overwrite').save(
-            f"s3a://{self.raw_bucket}/{prefix}/current")#.saveAsTable('redemption_raw')
+            f"s3a://{self.raw_bucket}/{prefix}/delta")#.saveAsTable('redemption_raw')
 
         df.createOrReplaceTempView('redemption_raw')
 
         scd_df = (
-            df.select("*",)
-            .withColumn('valid_to', lit(''))
-            #.withColumn('version_nr', lit('1'))
-            .withColumn('current_version', lit(True))
-        )
+            df
+            .select("*",
+                    F.lit('').cast("timestamp").alias("valid_from"),
+                    F.lit(True).cast("boolean").alias("current")
+                    ))
 
         scd_df.coalesce(1).write.format('delta').mode('overwrite').save(
-        f"s3a://{self.raw_bucket}/{prefix}/delta")#.saveAsTable('redemption_scd2')
+        f"s3a://{self.raw_bucket}/{prefix}/current")#.saveAsTable('redemption_scd2')
 
-        scd_df.createOrReplaceTempView('redemption_scd2')
+        scd_df.createOrReplaceTempView('redemption_scd')
 
 
         scd_df = DeltaTable.forPath(
-            self.spark, f"s3a://{self.raw_bucket}/{prefix}/delta")
-            
-        df = DeltaTable.forPath(
             self.spark, f"s3a://{self.raw_bucket}/{prefix}/current")
-
-        # Rows to INSERT new 'redeemeddate' of existing redemption
-        newRedemptionToInsert = df \
-            .alias("s") \
-            .join(scd_df.toDF().alias("d"), "redemptionid") \
-            .where("s.redeemeddate <> d.redeemeddate AND d.current_version = 'false'")  # Qual a coluna de comparação se houver modificação, estou usando a redeemeddate
             
-        # Stage the update by unioning two sets of rows
-        # 1. Rows that will be inserted in the whenNotMatched clause
-        # 2. Rows that will either update the current redeemeddate of existing redemption or insert the new redeemeddate of new redemption
-        scddUpdates = (
-            newRedemptionToInsert
-            .selectExpr("NULL as mergeKey", "s.*")   # Rows for 1
-            # Rows for 2.
-            .union(df.selectExpr("redemptionid as mergeKey", "*"))
+
+        sqlContext.sql(
+        """      
+        MERGE INTO redemption_scd AS scd
+            USING
+            (
+            SELECT cc.redemptionid AS mergerkey, 
+            cc.*,
+            '' as valid_from,
+            True as current
+            FROM redemption_raw cc
+        UNION ALL
+            SELECT NULL as mergerkey, 
+            cc.customerid,
+            cc.redemptionid,
+            cc.referencenumber,
+            cc.rewardmatrixitemid,
+            cc.rewardcategoryid,
+            cc.categoryhierarchyid,
+            cc.redemptiondescription,
+            cc.creditcode,
+            cc.creditredemptionid,
+            cc.quantity,
+            cc.totalpointsredeemed,
+            cc.redeemeddate,
+            cc.postingdate,
+            cc.pointspurchased,
+            cc.fulfillmentvendorid,
+            cc.groupid,
+            cc.personalization,
+            cc.programid,
+            cc.householdid,
+            cc.emailaddress,
+            cc.redemptionsourcecode,
+            cc.travelcomponentquantity,
+            cc.cashbackamount,
+            cc.cashbacksentdate,
+            cc.redemptionitemdescription,
+            cc.externalitemskucode,
+            cc.externalitemdescription,
+            cc.redemptionquantity,
+            cc.externalitemid,
+            cc.categoryname,
+            cc.externalemailaddress,
+            cc.redeemedhouseholdid1,
+            cc.pointsredeemedhh1,
+            cc.redeemedhouseholdid2,
+            cc.pointsredeemedhh2,
+            cc.redeemedhouseholdid3,
+            cc.pointsredeemedhh3,
+            cc.bankcustomernumber,
+            cc.created_at,
+            cc.valid_to,
+            cc.redeemed_year_month,
+            cc.filename,
+            '' as valid_from,
+            True as current
+        FROM redemption_raw cc
+            ) ud
+        ON scd.redemptionid = ud.mergerkey AND scd.current is True  
+        WHEN MATCHED 
+            THEN UPDATE SET 
+                scd.valid_from = ud.valid_to,
+            scd.current  = False                        
+        WHEN NOT MATCHED 
+        AND ud.mergerkey is null 
+        THEN INSERT *
+        """
         )
-
-        # Apply SCD Type 2 operation using merge
-
-
-        scd_df.alias("t").merge(
-            scddUpdates.alias("s"),
-            "s.redemptionid = t.redemptionid") \
-            .whenMatchedUpdate(
-                condition="s.current_version = true AND s.redeemeddate <> d.redeemeddate",
-                set={
-                    "current_version": "false",
-                    "valid_to": "d.valid_from"
-            }) \
-            .whenNotMatchedInsert(
-            values={
-                "redemptionid": "d.redemptionid",
-                "redeemeddate": "d.redeemeddate",
-                "current": "true",
-                "valid_from": "d.valid_from",
-                "endDate": "null"
-            }
-        ).execute()
 
         df.write.mode('overwrite').format("delta").save(
             f"s3a://{self.raw_bucket}/{prefix}/processed")
@@ -104,3 +170,5 @@ class DeltaProcessing:
         deltaTable = DeltaTable.forPath(
             self.spark, f"s3a://{self.raw_bucket}/{prefix}")
         deltaTable.generate("symlink_format_manifest")
+
+
