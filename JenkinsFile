@@ -21,7 +21,7 @@ pipeline {
                     dir('glue') {
                         sh 'terraform init' 
                         sh 'terraform plan'
-                        sh 'terraform destroy'
+                        sh 'terraform destroy -auto-approve'
                     }
                 }
             }
