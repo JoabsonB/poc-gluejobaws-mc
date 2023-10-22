@@ -26,10 +26,11 @@ variable "bucket_names" {
   description = "s3 bucket names"
   type        = list(string)
   default = [
-    "landing-zone",
-    "raw-zone",
-    "trusted-zone",
-    "refined-zone"
+    "landing",
+    "raw",
+    "trusted",
+    "refined",
+    "scripts"
   ]
 }
 
