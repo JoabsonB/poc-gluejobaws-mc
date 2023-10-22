@@ -1,4 +1,4 @@
-roypipeline {
+pipeline {
     agent any
 
     stages {
