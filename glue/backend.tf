@@ -5,5 +5,6 @@ terraform {
     region         = "us-east-1"
     encrypt        = true
     workspace_key_prefix = "dataflow-mc"
+    profile = "joabson.globalmetrics"
   }
 }

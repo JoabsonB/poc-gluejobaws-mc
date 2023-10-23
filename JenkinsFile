@@ -20,7 +20,8 @@ pipeline {
                 script {
                     dir('glue') {
                         sh 'terraform init' 
-                        sh 'terraform apply --auto-approve'
+                        sh 'terraform validate'
+                        sh 'terraform apply -auto-approve'
                     }
                 }
             }

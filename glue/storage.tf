@@ -15,22 +15,6 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "bucket_sse" {
       sse_algorithm = "AES256"
     }
   }
-
-   depends_on = [
-    aws_s3_bucket.buckets
-  ]
-
-}
-
-resource "aws_s3_bucket_acl" "bucket_acl" {
-  count  = length(var.bucket_names)
-  bucket = "${var.prefix}-${var.bucket_names[count.index]}"
-  acl    = "private"
-
-   depends_on = [
-    aws_s3_bucket.buckets
-  ]
-
 }
 
 # Rules for public access block
@@ -42,9 +26,4 @@ resource "aws_s3_bucket_public_access_block" "public_access_block" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
-
-  depends_on = [
-    aws_s3_bucket.buckets
-  ]
-
 }
