@@ -18,7 +18,7 @@ pipeline {
             steps {
                 script {
                     dir('glue') {
-                        sh 'terraform init' 
+                        sh 'terraform init -migrate-state' 
                         sh 'terraform plan'
                         sh 'terraform apply -auto-approve'
                     }
