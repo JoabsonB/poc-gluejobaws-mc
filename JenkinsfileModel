@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+
+
+
+    
     stages {
 
         stage("Checkout source") {
@@ -20,7 +24,7 @@ pipeline {
                 script {
                     dir('glue') {
                         sh 'terraform init -reconfigure' 
-                        sh 'terraform validate'
+                        sh 'terraform plan'
                         sh 'terraform apply -auto-approve'
                     }
                 }
@@ -28,7 +32,3 @@ pipeline {
         }
     }
 }
-
-
-
-
