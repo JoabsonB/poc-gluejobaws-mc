@@ -2,7 +2,7 @@ import boto3
 import time
 
 # Running jobs AWS Glue
-job_names = ["glue_script", "job2_name", "job3_name"]
+job_names = ["glue_script", "nome_job2", "nome_job3"]
 
 # Crie um cliente do AWS Glue
 client = boto3.client("glue")
