@@ -14,13 +14,11 @@ pipeline {
             environment {
                 AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
                 AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-                AWS_BUCKET = credentials('AWS_BUCKET')
-                AWS_BUCKET_KEY = credentials('AWS_BUCKET_KEY')
             }
             steps {
                 script {
                     dir('glue') {
-                        sh 'terraform init -reconfigure -backend-config="bucket=$AWS_BUCKET" -backend-config="key=$AWS_BUCKET_KEY"' 
+                        sh 'terraform init -reconfigure' 
                         sh 'terraform plan'
                         sh 'terraform apply -auto-approve'
                     }
