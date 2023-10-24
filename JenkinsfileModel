@@ -1,16 +1,11 @@
 pipeline {
     agent any
 
-
-
-
-    
     stages {
 
         stage("Checkout source") {
             steps {
                 git url: 'https://github.com/JoabsonB/poc-gluejobaws-mc', branch: 'main' 
-                sh 'ls'
             }
         }
 
@@ -18,14 +13,13 @@ pipeline {
             environment {
                 AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
                 AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
-                AWS_DEFAULT_REGION = credentials('AWS_DEFAULT_REGION')
             }
             steps {
                 script {
                     dir('glue') {
-                        sh 'terraform init -reconfigure' 
-                        sh 'terraform plan'
-                        sh 'terraform apply -auto-approve'
+                        sh 'terraform init -input=false' 
+                        sh 'terraform plan -out tfplan -input=false'
+                        sh 'terraform apply -input=false tfplan'
                     }
                 }
             }
