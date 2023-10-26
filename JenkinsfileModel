@@ -9,7 +9,7 @@ pipeline {
             }
         }
 
-        stage('Execução do projeto Terraform') {
+        stage('Execução do projeto Terraform- Webhook') {
             environment {
                 AWS_ACCESS_KEY_ID = credentials('AWS_ACCESS_KEY_ID')
                 AWS_SECRET_ACCESS_KEY = credentials('AWS_SECRET_ACCESS_KEY')
